@@ -1,6 +1,6 @@
 # Repo for NVIDIA Jetson series blog
 See the following url for detailed description</br>
-https://spyjetson.blogspot.com/2019/10/jetsonnano-human-pose-estimation-using.html
+https://spyjetson.blogspot.com/2019/10/jetsonnano-human-pose-estimation-using.html</br></br>
 
 Copy these codes to your  openpose installation directory/examples/tutorial_api_python.
 You might see these sample python files in that directory.</br>
