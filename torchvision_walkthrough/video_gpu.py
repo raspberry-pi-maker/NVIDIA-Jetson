@@ -23,30 +23,23 @@ def process_frame(img):
   img = cv2.resize(img, (IMG_SIZE, int(img.shape[0] * IMG_SIZE / img.shape[1])))
   img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-  #print('H:%d W:%d'%(img.shape[0], img.shape[1])) 
   trf = T.Compose([
-      #T.ToPILImage(),
       T.ToTensor()
   ])
 
   input_tensor = trf(img)
-  #input_tensor = torchvision.transforms.functional.to_tensor(img)
-  #print(input_tensor.shape)
   input_img = [input_tensor.to(device)]
   out = model(input_img)[0]
 
 
   print(len(out['boxes']))
   for box, score, keypoints in zip(out['boxes'], out['scores'], out['keypoints']):
-    #score = score.detach().numpy()
     score_np = score.cpu().detach().numpy()
     print(score_np)
     if score_np < THRESHOLD:
       continue
 
-    #box = box.detach().numpy()
     box_np = box.to(torch.int16).cpu().numpy()
-    #keypoints = keypoints.detach().numpy()[:, :2]
     keypoints_np = keypoints.to(torch.int16).cpu().numpy()[:, :2]
 
     cv2.rectangle(img, pt1=(int(box_np[0]), int(box_np[1])), pt2=(int(box_np[2]), int(box_np[3])), thickness=2, color=(0, 0, 255))
@@ -61,7 +54,7 @@ def process_frame(img):
 
   fps = 1.0 / (time.perf_counter() - fps_time)
   new_img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-  cv2.putText(new_img , "FPS: %f" % (fps), (20, 40),  cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+  cv2.putText(new_img , "FPS: %f" % (fps), (10, 20),  cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
   out_video.write(new_img)
   input_tensor.cpu()
 
@@ -78,11 +71,6 @@ if torch.cuda.is_available():
 else:
   device = torch.device('cpu')
   model = models.detection.keypointrcnn_resnet50_fpn(pretrained=True).eval()
-
-'''
-device = torch.device('cpu')
-model = models.detection.keypointrcnn_resnet50_fpn(pretrained=True).eval()
-'''
 
 
 cap = cv2.VideoCapture('imgs/02.mp4')
@@ -102,9 +90,5 @@ while cap.isOpened():
   print('Frame count[%d]'%count)
   count += 1
   
-  #img = None
-  #out = None
-  #torch.cuda.empty_cache()
-
 out_video.release()
 cap.release()
