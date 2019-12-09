@@ -2,7 +2,7 @@ import argparse
 import sys, os
 import time
 import tensorflow as tf
-from tf_trt_models.detection import download_detection_model, build_detection_graph
+
 ver=tf.__version__.split(".")
 if(int(ver[0]) == 1 and int(ver[1]) <= 13):
 #if tensorflow vereion <= 1.13.1 use this module
@@ -34,36 +34,32 @@ parser.add_argument('--precision', type=str, default='FP16',
                         help="FP16, FP32, INT16")
 parser.add_argument('--max_batch_size', type=int, default=1,
                         help="batch size , default :1")
-parser.add_argument('--max_workspace_size_bytes', type=int, default=2,
-                        help="max_workspace_size(GB) , default :2")
+parser.add_argument('--max_workspace_size_bytes', type=int, default=3,
+                        help="max_workspace_size(GB) , default :3")
 args = parser.parse_args()
 
 frozen_name = args.tfmodel
 frozen_graph = get_frozen_graph(frozen_name)
+print('=======Frozen Name:%s======='%(frozen_name));
 # convert (optimize) frozen model to TensorRT model
 your_outputs = args.outputs.split(',')
+for item in your_outputs:
+    print('=======outputs:=======' + item );
 
 start = time.time()
-
-if(int(ver[0]) == 1 and int(ver[1]) <= 13):
-    trt_graph = trt.create_inference_graph(
-        input_graph_def=frozen_graph,# frozen model
-        outputs=your_outputs,
-        is_dynamic_op=True,
-        minimum_segment_size=3,
-        maximum_cached_engines=int(1e3),
-        max_batch_size=args.max_batch_size,# specify your max batch size
-        max_workspace_size_bytes=args.max_workspace_size_bytes*(10**9),# specify the max workspace (2GB)
-        precision_mode=args.precision) # precision, can be "FP32" (32 floating point precision) or "FP16"
-else:
-    converter =trt.TrtGraphConverter(
-        input_graph_def=frozen_graph,# frozen model
-        max_batch_size=args.max_batch_size,
-        precision_mode=args.precision,
-        minimum_segment_size=3,
-        is_dynamic_op=True,
-        nodes_blacklist=your_outputs)
-    trt_graph = converter.convert()
+trt_graph = trt.create_inference_graph(
+    input_graph_def=frozen_graph,# frozen model
+    outputs=your_outputs,
+    is_dynamic_op=True,
+    #minimum_segment_size=3,
+    minimum_segment_size=50,
+    maximum_cached_engines=int(1e3),
+    max_batch_size=args.max_batch_size,# specify your max batch size
+    max_workspace_size_bytes=args.max_workspace_size_bytes*(10**9),# specify the max workspace (2GB)
+    #max_workspace_size_bytes= 1 << 25,# specify the max workspace (2GB)
+    # precision, can be "FP32" (32 floating point precision) or "FP16"
+    precision_mode=args.precision
+    )
 
 elapsed = time.time() - start
 print('Tensorflow model => TensorRT model takes : %f'%(elapsed))
@@ -72,3 +68,4 @@ print('Tensorflow model => TensorRT model takes : %f'%(elapsed))
 rt_name = args.trtmodel
 with tf.gfile.FastGFile(rt_name , 'wb') as f:
     f.write(trt_graph.SerializeToString())
+
