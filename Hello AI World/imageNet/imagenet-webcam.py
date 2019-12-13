@@ -26,16 +26,17 @@ import jetson.utils
 
 import argparse
 import sys, time
-import cv2
 import numpy as np
+import cv2
+
 # parse the command line
 parser = argparse.ArgumentParser(description="Classify a live camera stream using an image recognition DNN.", 
 						   formatter_class=argparse.RawTextHelpFormatter, epilog=jetson.inference.imageNet.Usage())
 
 parser.add_argument("--network", type=str, default="googlenet", help="pre-trained model to load (see below for options)")
-parser.add_argument("--camera", type=str, default="0", help="index of the MIPI CSI camera to use (e.g. CSI camera 0)\nor for VL42 cameras, the /dev/video device to use.\nby default, MIPI CSI camera 0 will be used.")
-parser.add_argument("--width", type=int, default=1280, help="desired width of camera stream (default is 1280 pixels)")
-parser.add_argument("--height", type=int, default=720, help="desired height of camera stream (default is 720 pixels)")
+parser.add_argument("--camera", type=str, default="/dev/video0", help="index of the MIPI CSI camera to use (e.g. CSI camera 0)\nor for VL42 cameras, the /dev/video device to use.\nby default, MIPI CSI camera 0 will be used.")
+parser.add_argument("--width", type=int, default=640, help="desired width of camera stream (default is 1280 pixels)")
+parser.add_argument("--height", type=int, default=480, help="desired height of camera stream (default is 720 pixels)")
 
 try:
 	opt = parser.parse_known_args()[0]
@@ -47,50 +48,40 @@ except:
 # load the recognition network
 net = jetson.inference.imageNet(opt.network, sys.argv)
 
-cap = cv2.VideoCapture(0)
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-    
-ret_val, img = cap.read()
-height, width, _ = img.shape
+# create the camera and display
+font = jetson.utils.cudaFont()
+camera = jetson.utils.gstCamera(opt.width, opt.height, opt.camera)
+#display = jetson.utils.glDisplay()
 fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
-out_video = cv2.VideoWriter('/tmp/output.mp4', fourcc, cap.get(cv2.CAP_PROP_FPS), (640, 480))
-count = 0
-fps_time = time.time()
-if cap is None:
-    print("Camera Open Error")
-    sys.exit(0)
-
+out_video = cv2.VideoWriter('/tmp/detect.mp4', fourcc, 25, (640, 480))
 # process frames until user exits
-while cap.isOpened() and count < 500:
-    ret_val, dst = cap.read()
-    if ret_val == False:
-        print("Camera read Error")
-        break    
+count = 0
+img, width, height = camera.CaptureRGBA(zeroCopy=1)
+print("========== Capture Width:%d Height:%d ==========="%(width, height))
 
-    rgb = cv2.cvtColor(dst, cv2.COLOR_BGR2RGB)
-    img = cv2.cvtColor(rgb, cv2.COLOR_RGB2RGBA)
-    img = cv2.UMat(img)
-    # rgb = cv2.cvtColor(dst, cv2.COLOR_BGR2RGB)
-    # img = cv2.cvtColor(rgb, cv2.COLOR_RGB2RGBA)
-    #img = img.astype(np.float)
+t = time.time()
+while count < 500:
+    # capture the image
+    img, width, height = camera.CaptureRGBA(zeroCopy=1)
     # classify the image
     class_idx, confidence = net.Classify(img, width, height)
     # find the object description
     class_desc = net.GetClassDesc(class_idx)
+    # overlay the result on the image	
+    fps = 1.0 / ( time.time() - t)
+    font.OverlayText(img, width, height, "{:05.2f}% {:s}".format(confidence * 100, class_desc), 5, 5, font.White, font.Gray40)
+    font.OverlayText(img, width, height, "FPS:%5.2f"%(fps), 5, 30, font.White, font.Gray40)
+    t = time.time()
+    #for numpy conversion, wait for synchronizing
+    jetson.utils.cudaDeviceSynchronize ()
+    arr = jetson.utils.cudaToNumpy(img, width, height, 4)      #CUDA img is float type
+    arr1 = cv2.cvtColor (arr.astype(np.uint8), cv2.COLOR_RGBA2BGR)
+    if(count % 100 == 0):
+        cv2.imwrite("/tmp/detect-" + str(count)+ ".jpg", arr1)
+    out_video.write(arr1)
+    cv2.imshow('imageNet', arr1)
+    # print out performance info
+    net.PrintProfilerTimes()
+    count += 1
 
-
-    fps = 1.0 / (time.time() - fps_time)
-    fps_time = time.time()
-
-    img = cv2.UMat.get(img) # GPU ->CPU
-    # img = img.astype(np.uint8)
-    # img = cv2.cvtColor(img, cv2.COLOR_RGBA2RGB)
-    # img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-    cv2.putText(img , "FPS: %f" % (fps), (20, 40),  cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-    out_video.write(newImage)
-
-
-cv2.destroyAllWindows()        
 out_video.release()
-cap.release()
