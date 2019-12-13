@@ -20,6 +20,10 @@ if __name__ == '__main__':
 
     print("OpenPose start")
     cap = cv2.VideoCapture(0)
+    if cap is None:
+        print("Camera Open Error")
+        sys.exit(0)
+            
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
       
@@ -29,9 +33,7 @@ if __name__ == '__main__':
     
     count = 0
 
-    if cap is None:
-        print("Camera Open Error")
-        sys.exit(0)
+
     while cap.isOpened() and count < 30:
         ret_val, dst = cap.read()
         if ret_val == False:
