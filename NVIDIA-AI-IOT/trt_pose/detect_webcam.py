@@ -111,13 +111,15 @@ def execute(img, src, t):
                 x = round(keypoints[j][2] * WIDTH * X_compress)
                 y = round(keypoints[j][1] * HEIGHT * Y_compress)
                 cv2.circle(src, (x, y), 3, color, 2)
-                cv2.putText(src , "%d" % int(keypoints[j][0]), (x + 5, y),  cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 1)
+                cv2.putText(src , "%d" % int(keypoints[j][0]), (x + 5, y),  cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 2)
                 cv2.circle(src, (x, y), 3, color, 2)
     print("FPS:%f "%(fps))
     #draw_objects(img, counts, objects, peaks)
 
     cv2.putText(src , "FPS: %f" % (fps), (20, 20),  cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 1)
     out_video.write(src)
+    cv2.imshow('key', src)
+    cv2.waitKey(1)
 
 
 
