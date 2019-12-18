@@ -28,12 +28,13 @@ import argparse
 import sys, time
 import numpy as np
 import cv2
-
 # parse the command line
-parser = argparse.ArgumentParser(description="Classify a live camera stream using an image recognition DNN.", 
-						   formatter_class=argparse.RawTextHelpFormatter, epilog=jetson.inference.imageNet.Usage())
+parser = argparse.ArgumentParser(description="Locate objects in a live camera stream using an object detection DNN.", 
+						   formatter_class=argparse.RawTextHelpFormatter, epilog=jetson.inference.detectNet.Usage())
 
-parser.add_argument("--network", type=str, default="googlenet", help="pre-trained model to load (see below for options)")
+parser.add_argument("--network", type=str, default="ssd-mobilenet-v2", help="pre-trained model to load (see below for options)")
+parser.add_argument("--overlay", type=str, default="box,labels,conf", help="detection overlay flags (e.g. --overlay=box,labels,conf)\nvalid combinations are:  'box', 'labels', 'conf', 'none'")
+parser.add_argument("--threshold", type=float, default=0.5, help="minimum detection threshold to use") 
 parser.add_argument("--camera", type=str, default="/dev/video0", help="index of the MIPI CSI camera to use (e.g. CSI camera 0)\nor for VL42 cameras, the /dev/video device to use.\nby default, MIPI CSI camera 0 will be used.")
 parser.add_argument("--width", type=int, default=640, help="desired width of camera stream (default is 640 pixels)")
 parser.add_argument("--height", type=int, default=480, help="desired height of camera stream (default is 480 pixels)")
@@ -45,31 +46,32 @@ except:
 	parser.print_help()
 	sys.exit(0)
 
-# load the recognition network
-net = jetson.inference.imageNet(opt.network, sys.argv)
+# load the object detection network
+net = jetson.inference.detectNet(opt.network, sys.argv, opt.threshold)
 
-# create the camera and display
 font = jetson.utils.cudaFont()
+# create the camera and display
 camera = jetson.utils.gstCamera(opt.width, opt.height, opt.camera)
-#display = jetson.utils.glDisplay()
 fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
 out_video = cv2.VideoWriter('/tmp/detect.mp4', fourcc, 25, (640, 480))
-# process frames until user exits
+
 count = 0
 img, width, height = camera.CaptureRGBA(zeroCopy=1)
 print("========== Capture Width:%d Height:%d ==========="%(width, height))
-
+# process frames until user exits
 t = time.time()
 while count < 500:
     # capture the image
     img, width, height = camera.CaptureRGBA(zeroCopy=1)
-    # classify the image
-    class_idx, confidence = net.Classify(img, width, height)
-    # find the object description
-    class_desc = net.GetClassDesc(class_idx)
-    # overlay the result on the image	
+
+    # detect objects in the image (with overlay)
+    detections = net.Detect(img, width, height, opt.overlay)
+
+    # print the detections
+    print("detected {:d} objects in image".format(len(detections)))
     fps = 1.0 / ( time.time() - t)
-    font.OverlayText(img, width, height, "{:05.2f}% {:s}".format(confidence * 100, class_desc), 5, 5, font.White, font.Gray40)
+    for detection in detections:
+        print(detection)
     font.OverlayText(img, width, height, "FPS:%5.2f"%(fps), 5, 30, font.White, font.Gray40)
     t = time.time()
     #for numpy conversion, wait for synchronizing
@@ -79,12 +81,11 @@ while count < 500:
     if(count % 100 == 0):
         cv2.imwrite("/tmp/detect-" + str(count)+ ".jpg", arr1)
     out_video.write(arr1)
-    cv2.imshow('imageNet', arr1)
-    cv2.waitKey(1)
-
+    # cv2.imshow('imageNet', arr1)
+    # cv2.waitKey(1)
     print("==== FPS:%f ====="%(fps))
+
     # print out performance info
-    net.PrintProfilerTimes()
+    # net.PrintProfilerTimes()
     count += 1
 
-out_video.release()
