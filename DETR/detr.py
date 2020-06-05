@@ -78,7 +78,8 @@ print('Image load success')
 img_tens = transform(img).unsqueeze(0).cuda()
 
 tfps = 0
-for i in range (1):
+count = 0
+for i in range (5):
     fps_time  = time.perf_counter()
     th.cuda.empty_cache()
     gc.collect()
@@ -88,6 +89,7 @@ for i in range (1):
     fps = 1.0 / (time.perf_counter() - fps_time)
     print("Net FPS: %f" % (fps))
     tfps += fps
+    count += 1
 
     im2 = img.copy()
     drw = ImageDraw.Draw(im2)
@@ -131,6 +133,6 @@ for i in range (1):
     th.cuda.empty_cache()
 
 print('Processing success')  
-print('AVG FPS:%f'%(tfps / 10))  
+print('AVG FPS:%f'%(tfps / count))  
 im2.save("./%s-%s.jpg"%(args.model, args.size))   
   
