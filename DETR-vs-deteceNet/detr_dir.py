@@ -10,7 +10,6 @@ print('pytorch', th.__version__)
 print('torchvision', torchvision.__version__)
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--file', type=str, default="", help='filename to load')
 parser.add_argument('--model', type=str, default="resnet50", help='network model -> resnet50 or resnet101 or resnet50_dc5 or  resnet50_panoptic')
 parser.add_argument("--threshold", type=float, default=0.7, help="minimum detection threshold to use")
 args = parser.parse_args()
@@ -41,10 +40,14 @@ elif args.model == 'resnet101_panoptic':
 else:    
     print('Unknown network name[%s]'%(args.model))
     sys.exit(0)
-    
+
+t1 = time.time()    
 model.eval()
 model = model.cuda()
 print('model[%s] load success'%args.model)
+t2 = time.time()
+print("======== Network Load time:%f"%(t2 - t1))
+
 
 transform = T.Compose([
     T.ToTensor(),
@@ -66,71 +69,76 @@ CLASSES = [
     'book', 'clock', 'vase', 'scissors', 'teddy bear', 'hair drier',
     'toothbrush'
 ]
+COLORS = [(0, 45, 74, 127), (85, 32, 98, 127), (93, 69, 12, 127),
+          (49, 18, 55, 127), (46, 67, 18, 127), (30, 74, 93, 127)]
+          
+src_path = '/usr/local/src/test_images'
+dest_path = '/usr/local/src/result'
+
+fnt = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf', 16)
+fnt2 = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 30)
 
 
+for root, dirs, files in os.walk(src_path):
+    for fname in files:
+        gc.collect()
+        full_fname = os.path.join(root, fname)
+        img = Image.open(full_fname).convert('RGB')
+        W, H = img.size
+        t1 = time.time()
+        img_tens = transform(img).unsqueeze(0).cuda()
 
-if args.file == '':
-    url = 'https://i.ytimg.com/vi/vrlX3cwr3ww/maxresdefault.jpg'
-    img = Image.open(requests.get(url, stream=True).raw).resize((W,H)).convert('RGB')
-    filename = 'maxresdefault'
-else:    
-    img = Image.open(args.file).convert('RGB')
-    filename = os.path.splitext(os.path.basename(args.file))[0]
+        fps_time  = time.perf_counter()
+        with th.no_grad():
+          output = model(img_tens)
 
-W, H = img.size
-
-print('Image load success')
-img_tens = transform(img).unsqueeze(0).cuda()
-count = 0
-for i in range (1):
-    fps_time  = time.perf_counter()
-    th.cuda.empty_cache()
-    gc.collect()
-    with th.no_grad():
-        output = model(img_tens)
-
-    fps = 1.0 / (time.perf_counter() - fps_time)
-    print("Net FPS: %f" % (fps))
-    tfps += fps
-    count += 1
-
-    im2 = img.copy()
-    drw = ImageDraw.Draw(im2)
-    pred_logits=output['pred_logits'][0]
-    pred_boxes=output['pred_boxes'][0]
+        elapsed = time.time() - t1
+        fps = 1.0 / elapsed
+        print("FPS:%f"%(fps))
 
 
-    for logits, box in zip(pred_logits, pred_boxes):
-        m = th.nn.Softmax(dim=0)
-        prob = m(logits)
-        top3 = th.topk(logits, 3)
-        if top3.indices[0] >= len(CLASSES) or prob[top3.indices[0]] < args.threshold:
-            continue
+        im2 = img.copy()
+        drw = ImageDraw.Draw(im2, 'RGBA')
+        pred_logits=output['pred_logits'][0]
+        pred_boxes=output['pred_boxes'][0]
+
+        color_index = 0
+        for logits, box in zip(pred_logits, pred_boxes):
+            m = th.nn.Softmax(dim=0)
+            prob = m(logits)
+            top3 = th.topk(logits, 3)
+            if top3.indices[0] >= len(CLASSES) or prob[top3.indices[0]] < args.threshold:
+                continue
+              
+            print(' ===== print top3 values =====')
+            print('top3', top3)
+
+            print('top 1: Label[%-20s]  probability[%5.3f]'%(CLASSES[top3.indices[0]], prob[top3.indices[0]] * 100))
+
+            if top3.indices[1] < len(CLASSES) :
+                print('top 2: Label[%-20s]  probability[%5.3f]'%(CLASSES[top3.indices[1]], prob[top3.indices[1]] * 100))
+
+            if top3.indices[2] < len(CLASSES) :
+                print('top 3: Label[%-20s]  probability[%5.3f]'%(CLASSES[top3.indices[2]], prob[top3.indices[2]] * 100))
+            
+            
+            cls = top3.indices[0]
+            label = '%s-%4.2f'%(CLASSES[cls], prob[cls] * 100 )
+            print(label)
+            box = box.cpu() * th.Tensor([W, H, W, H])
+            x, y, w, h = box
+            x0, x1 = x-w//2, x+w//2
+            y0, y1 = y-h//2, y+h//2
+            color = COLORS[color_index % len(COLORS)]
+            color_index += 1            
+            drw.rectangle([x0, y0, x1, y1], fill = color, width=5)
+            drw.text((x, y), label, font=fnt,fill='white')
+            
+        output = None
+        th.cuda.empty_cache()
         
-        print(' ===== print top3 values =====')
-        print('top3', top3)
-        print('top 1: Label[%-20s]  probability[%5.3f]'%(CLASSES[top3.indices[0]], prob[top3.indices[0]] * 100))
-        if top3.indices[1] < len(CLASSES) :
-            print('top 2: Label[%-20s]  probability[%5.3f]'%(CLASSES[top3.indices[1]], prob[top3.indices[1]] * 100))
-        if top3.indices[2] < len(CLASSES) :
-            print('top 3: Label[%-20s]  probability[%5.3f]'%(CLASSES[top3.indices[2]], prob[top3.indices[2]] * 100))
-        
-        cls = top3.indices[0]
-        label = '%s-%4.2f'%(CLASSES[cls], prob[cls] * 100 )
+        drw.text((5, 5), 'FPS-%4.2f'%(fps), font=fnt2,fill='green')
+        s = os.path.splitext(fname)[0]
+        out_name = os.path.join(dest_path, s + '_detr_%s_%4.2f.jpg'%(args.model, fps))
+        im2.save(out_name)   
 
-        #print(label)
-        box = box.cpu() * th.Tensor([W, H, W, H])
-        x, y, w, h = box
-        x0, x1 = x-w//2, x+w//2
-        y0, y1 = y-h//2, y+h//2
-        drw.rectangle([x0, y0, x1, y1], outline='red', width=5)
-        drw.text((x, y), label, fill='white')
-
-    fps = 1.0 / (time.perf_counter() - fps_time)
-    print("FPS: %f" % (fps))
-    output = None
-    th.cuda.empty_cache()
-
-print('Processing success')  
-print('AVG FPS:%f'%(tfps / count))  
-im2.save("./%s-%s.jpg"%(filename, args.model))   
