@@ -12,6 +12,7 @@ print('torchvision', torchvision.__version__)
 parser = argparse.ArgumentParser()
 parser.add_argument('--file', type=str, default="", help='filename to load')
 parser.add_argument('--model', type=str, default="resnet50", help='network model -> resnet50 or resnet101 or resnet50_dc5 or  resnet50_panoptic')
+parser.add_argument("--size", type=str, default='300X200', help="inference size")
 parser.add_argument("--threshold", type=float, default=0.7, help="minimum detection threshold to use")
 args = parser.parse_args()
 
@@ -66,8 +67,9 @@ CLASSES = [
     'book', 'clock', 'vase', 'scissors', 'teddy bear', 'hair drier',
     'toothbrush'
 ]
-
-
+tmp = args.size.split('X')
+W = int(tmp[0])
+H = int(tmp[1])
 
 if args.file == '':
     url = 'https://i.ytimg.com/vi/vrlX3cwr3ww/maxresdefault.jpg'
