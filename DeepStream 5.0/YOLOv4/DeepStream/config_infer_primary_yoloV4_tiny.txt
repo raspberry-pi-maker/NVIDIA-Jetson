@@ -63,11 +63,11 @@ gpu-id=0
 net-scale-factor=0.0039215697906911373
 #0=RGB, 1=BGR
 model-color-format=0
-#custom-network-config=/home/spypiggy/src/pytorch-YOLOv4/cfg/yolov4.cfg
+#custom-network-config=/home/spypiggy/src/pytorch-YOLOv4/cfg/yolov4-tiny.cfg
 # model-file=yolov3-tiny.weights
-model-engine-file=/home/spypiggy/src/pytorch-YOLOv4/yolov4_1_3_608_608_fp16.engine
+model-engine-file=/home/spypiggy/src/pytorch-YOLOv4/yolov4_1_3_416_416_fp16.engine
 labelfile-path=/opt/nvidia/deepstream/deepstream/sources/objectDetector_Yolo/labels.txt
-#int8-calib-file=/opt/nvidia/deepstream/deepstream/sources/objectDetector_Yolo/yolov3-calibration.table.trt7.0
+int8-calib-file=/opt/nvidia/deepstream/deepstream/sources/objectDetector_Yolo/yolov3-calibration.table.trt7.0
 ## 0=FP32, 1=INT8, 2=FP16 mode
 network-mode=2
 num-detected-classes=80
@@ -85,5 +85,5 @@ engine-create-func-name=NvDsInferYoloCudaEngineGet
 #scaling-compute-hw=0
 
 [class-attrs-all]
-nms-iou-threshold=0.7
-pre-cluster-threshold=0.7
+nms-iou-threshold=0.6
+pre-cluster-threshold=0.6
