@@ -42,7 +42,7 @@ echo "** Building..."
 mkdir release
 cd release/
 cmake -D WITH_CUDA=ON -D ENABLE_PRECOMPILED_HEADERS=OFF  -D CUDA_ARCH_BIN="6.2" -D CUDA_ARCH_PTX="" -D OPENCV_EXTRA_MODULES_PATH=../../opencv_contrib-4.4.0/modules -D WITH_GSTREAMER=ON -D WITH_LIBV4L=ON -D BUILD_opencv_python2=ON -D BUILD_opencv_python3=ON -D BUILD_TESTS=OFF -D BUILD_PERF_TESTS=OFF -D BUILD_EXAMPLES=OFF -D CMAKE_BUILD_TYPE=RELEASE -D CMAKE_INSTALL_PREFIX=/usr/local ..
-make -j6
+make -j4
 sudo make install
 
 echo "** Install opencv-4.4.0 successfully"
