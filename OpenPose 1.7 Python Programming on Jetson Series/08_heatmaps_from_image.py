@@ -8,7 +8,6 @@ from sys import platform
 import argparse
 from openpose import pyopenpose as op
 
-
 try:
     # Flags
     parser = argparse.ArgumentParser()
@@ -18,7 +17,11 @@ try:
     # Custom Params (refer to include/openpose/flags.hpp for more parameters)
     params = dict()
     params["model_folder"] = "/usr/local/src/openpose-1.7.0/models/"
-    params["net_resolution"] = "320x256" #COCO_val2014_000000000192.jpg image is landscape mode, so 320x256 is a good choice       
+    params["heatmaps_add_parts"] = True
+    params["heatmaps_add_bkg"] = True
+    params["heatmaps_add_PAFs"] = True
+    params["heatmaps_scale"] = 2
+
     # Add others in path?
     for i in range(0, len(args[1])):
         curr_item = args[1][i]
@@ -31,6 +34,10 @@ try:
             key = curr_item.replace('-','')
             if key not in params: params[key] = next_item
 
+    # Construct it from system arguments
+    # op.init_argv(args[1])
+    # oppython = op.OpenposePython()
+
     # Starting OpenPose
     opWrapper = op.WrapperPython()
     opWrapper.configure(params)
@@ -41,15 +48,27 @@ try:
     imageToProcess = cv2.imread(args[0].image_path)
     datum.cvInputData = imageToProcess
     opWrapper.emplaceAndPop(op.VectorDatum([datum]))
-    human_count = len(datum.poseKeypoints)
+
+    # Process outputs
+    outputImageF = (datum.inputNetData[0].copy())[0,:,:,:] + 0.5
+    outputImageF = cv2.merge([outputImageF[0,:,:], outputImageF[1,:,:], outputImageF[2,:,:]])
+    outputImageF = (outputImageF*255.).astype(dtype='uint8')
+    heatmaps = datum.poseHeatMaps.copy()
+    heatmaps = (heatmaps).astype(dtype='uint8')
+
     # Display Image
-    for human in range(human_count):
-        print(datum.poseKeypoints[human])
-    print("Total %d human detected"%human_count)
-    cv2.imshow("OpenPose 1.7.0 - Tutorial Python API", datum.cvOutputData)
-    k = 0
-    while k != 27:
-        k = cv2.waitKey(0) & 0xFF
+    counter = 0
+    while 1:
+        num_maps = heatmaps.shape[0]
+        heatmap = heatmaps[counter, :, :].copy()
+        heatmap = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
+        combined = cv2.addWeighted(outputImageF, 0.5, heatmap, 0.5, 0)
+        cv2.imshow("OpenPose 1.7.0 - Tutorial Python API", combined)
+        key = cv2.waitKey(-1)
+        if key == 27:
+            break
+        counter += 1
+        counter = counter % num_maps
 except Exception as e:
     print(e)
     sys.exit(-1)

@@ -1,3 +1,4 @@
+# Customized for NVidia Jetson Series by spyjetson
 # From Python
 # It requires OpenCV installed for Python
 import sys
