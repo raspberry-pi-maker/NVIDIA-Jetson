@@ -6,8 +6,8 @@
 # and proprietary rights in and to this software, related documentation
 # and any modifications thereto.  Any use, reproduction, disclosure or
 # distribution of this software and related documentation without an express
-# license agreement from NVIDIA Corporation is strictly prohibited.
-#
+# license agreement from NVIDIA Corporation is strictly prohibited. 
+# spyjetson(https://spyjetson.blogspot.com/) modified
 
 if [ "$#" -ne 1 ]; then
     echo "Usage: $0 <Install Folder>"
