@@ -18,7 +18,7 @@ user="nvidia"
 passwd="nvidia"
 
 echo "** Remove OpenCV3.3 first"
-sudo sudo apt-get purge *libopencv*
+sudo apt-get purge *libopencv*
 
 echo "** Install requirement"
 sudo apt-get update
