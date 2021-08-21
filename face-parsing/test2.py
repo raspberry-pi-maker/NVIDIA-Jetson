@@ -1,5 +1,6 @@
 #!/usr/bin/python
 # -*- encoding: utf-8 -*-
+# som modification by spypiggy
 
 import argparse
 from model import BiSeNet
