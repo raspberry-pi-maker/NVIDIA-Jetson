@@ -24,7 +24,7 @@ def analyze(out):
     for x in range(512):
         for y in range(512):
             pixel = out[:,x,y]
-            val =  pixel.argmax(1)
+            val =  pixel.argmax(0)
             parsing[x, y] = val
     length = out.shape[0]
     parsing = out.argmax(0)
