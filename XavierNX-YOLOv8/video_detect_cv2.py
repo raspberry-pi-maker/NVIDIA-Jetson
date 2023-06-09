@@ -6,6 +6,7 @@ import torchvision.transforms as T
 
 colors = [(255,0 , 0), (0,255,0), (0,0,255)]
 font = cv2.FONT_HERSHEY_SIMPLEX   
+fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
 
 def draw(img, boxes):
     index = 0
@@ -18,31 +19,29 @@ def draw(img, boxes):
         index += 1
     # cv2.imshow("draw", img)
     # cv2.waitKey(1)
-    out_video.write(img)
 
 
 # Load a model
-model = YOLO("yolov8l.pt")  # load an official model
+model = YOLO("yolov8s.pt")  # load an official model
 label_map = model.names
 
 f = 0
 net_total = 0.0
 total = 0.0
 
-cap = cv2.VideoCapture("./WUzgd7C1pWA.mp4")
+cap = cv2.VideoCapture("./highway_traffic.mp4")
 # Skip First frame
 ret, img = cap.read()
 if ret == False:
     print('Video File Read Error')    
     sys.exit(0)
 
-results = model(img)  # predict on an image
 h, w, c = img.shape
 print('Video Frame shape H:%d, W:%d, Channel:%d'%(h, w, c))
 
 fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
 out_video = cv2.VideoWriter('./cv_result.mp4', fourcc, cap.get(cv2.CAP_PROP_FPS), (w, h))
-
+results = model(img)  # predict on an image
 
 while cap.isOpened():
     s = time.time()
@@ -50,14 +49,16 @@ while cap.isOpened():
     if ret == False:
         break
 
+    net_s = time.time()
     results = model(img)  # predict on an image
     net_e = time.time()
     for result in results:
         draw(result.orig_img, result.boxes)
     e = time.time()
-    net_total += (net_e - s)
+    net_total += (net_e - net_s)
     total += (e - s)
     f += 1
+    out_video.write(result.orig_img)
 
     
 fps = f / total 
